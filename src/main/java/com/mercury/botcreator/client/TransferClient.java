@@ -1,6 +1,8 @@
 package com.mercury.botcreator.client;
 
+import com.mercury.botcreator.aspect.stereotype.ValidateApiResponse;
 import com.mercury.botcreator.client.request.TransferRequest;
+import com.mercury.botcreator.client.response.ApiResponse;
 import com.mercury.botcreator.client.response.TransferResponse;
 import com.mercury.botcreator.client.response.VerifyTokenResponse;
 import com.mercury.botcreator.config.AgencyClientConfig;
@@ -14,14 +16,16 @@ import java.util.List;
 
 @FeignClient(
         name = "transferClient",
-        url = "${application.env.variables.urls.gamems}",
+        url = "${application.brand.integrations.game-ms.host}",
         configuration = AgencyClientConfig.class
 )
 public interface TransferClient {
 
-    @PostMapping(value = "/gamems/v1/agency/transfer", consumes = "application/json")
-    TransferResponse topUpBalance(@RequestBody List<TransferRequest> request);
+    @PostMapping(value = "${application.brand.integrations.game-ms.path.topUp}", consumes = "application/json")
+    @ValidateApiResponse(operation = "TopUp Balance")
+    ApiResponse<TransferResponse> topUpBalance(@RequestBody List<TransferRequest> request);
 
-    @GetMapping("/gamems/v1/agency/verifytoken/{token}")
-    VerifyTokenResponse verifyToken(@PathVariable("token") String token);
+    @GetMapping("${application.brand.integrations.game-ms.path.verifyToken}")
+    @ValidateApiResponse(operation = "Verify Token")
+    ApiResponse<VerifyTokenResponse> verifyToken(@PathVariable("token") String token);
 }

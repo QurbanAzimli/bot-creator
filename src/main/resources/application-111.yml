@@ -1,10 +1,28 @@
 
 application:
-  env:
-    variables:
-      deposit-amount: 50000000
-      agencyId: 38
-      appId: "bc116111"
-      urls:
-        apigw: 'https://apigw-111.sgame.us'
-        gamems: 'http://gamems.dev:5007'
+  common:
+    depositAmount: 50000000
+  brand:
+    agencyId: 38
+    appId: "bc116111"
+    integrations:
+      api-gw:
+        host: "https://apigw-111.sgame.us"
+        path:
+          register: "/user/register.aspx"
+          login: "/user/login.aspx"
+          update: "/user/update.aspx"
+      game-ms:
+        host: "http://gamems.dev:5007"
+        path:
+          topUp: "/gamems/v1/agency/transfer"
+          verifyToken: "/gamems/v1/agency/verifytoken/{token}"
+
+#  env:
+#    variables:
+#      deposit-amount: 50000000
+#      agencyId: 38
+#      appId: "bc116111"
+#      urls:
+#        apigw: 'https://apigw-111.sgame.us'
+#        gamems: 'http://gamems.dev:5007'

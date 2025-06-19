@@ -1,11 +1,12 @@
 package com.mercury.botcreator.client.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
-public class UpdateResponse {
-    private String status;
-    private int code;
-    private String message;
-    private Object data;
+@EqualsAndHashCode(callSuper = true)
+public class UpdateResponse extends ApiResponseData {
+    @JsonProperty("fullname")
+    private String fullName;
 }
