@@ -1,7 +1,8 @@
 package com.mercury.botcreator.controller;
 
 import com.mercury.botcreator.model.BotCreateRequest;
-import com.mercury.botcreator.service.BotCreationService;
+import com.mercury.botcreator.service.AdminSupportedBotCreationService;
+import com.mercury.botcreator.service.NaturalBotCreationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,13 +17,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class BotCreationController {
 
 
-    private final BotCreationService botCreationService;
+    private final NaturalBotCreationService naturalBotCreationService;
+    private final AdminSupportedBotCreationService adminSupportedBotCreationService;
 
-    @PostMapping
-    public String createBot(@RequestBody BotCreateRequest request) {
+    @PostMapping("/natural")
+    public String createBotNatural(@RequestBody BotCreateRequest request) {
         log.info("Creating a new bot...");
-        botCreationService.createBots(request);
+        naturalBotCreationService.createBots(request);
         return "Bot created successfully!";
     }
 
+    @PostMapping("/admin")
+    public String createBotAdmin(@RequestBody BotCreateRequest request) {
+        log.info("Creating a new bot...");
+        adminSupportedBotCreationService.createBots(request);
+        return "Bot created successfully!";
+    }
 }

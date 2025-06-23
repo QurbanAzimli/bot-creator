@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class BotCreationService {
+public class NaturalBotCreationService {
 
 
     @Value("${application.brand.appId}")
@@ -116,7 +116,7 @@ public class BotCreationService {
 
     private void update(UpdateRequest updateTemplate, String token) {
         updateTemplate.setFullName(UsernameGenerator.generate("bot", 10));
-        agencyClient.updateUser(updateTemplate, token);
+        agencyClient.updateUser(token, updateTemplate);
         log.info("Avatar updated");
     }
 

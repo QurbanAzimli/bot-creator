@@ -24,10 +24,6 @@ public class ApiResponseValidationAspect {
                 throw new IllegalStateException("[" + op + "] Failed with code=" + response.getCode() +
                         ", status=" + response.getStatus() + ", message=" + response.getMessage());
             }
-
-            if (response.getData() == null) {
-                throw new IllegalStateException("[" + op + "] Data is null");
-            }
         }
 
         return result;

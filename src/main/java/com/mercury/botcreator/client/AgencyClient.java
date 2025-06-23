@@ -2,6 +2,7 @@ package com.mercury.botcreator.client;
 
 
 import com.mercury.botcreator.aspect.stereotype.ValidateApiResponse;
+import com.mercury.botcreator.client.request.AdminDepositRequest;
 import com.mercury.botcreator.client.request.LoginRequest;
 import com.mercury.botcreator.client.request.RegistrationRequest;
 import com.mercury.botcreator.client.request.UpdateRequest;
@@ -28,6 +29,13 @@ public interface AgencyClient {
             @RequestBody RegistrationRequest request
     );
 
+    @PostMapping(value = "${application.brand.integrations.api-gw.path.register-bot}", consumes = "application/json")
+    @ValidateApiResponse(operation = "Register User")
+    ApiResponse<RegistrationResponse> registerBot(
+            @RequestHeader("X-Token") String token,
+            @RequestBody RegistrationRequest request
+    );
+
     @PostMapping(value = "${application.brand.integrations.api-gw.path.login}", consumes = "application/json")
     @ValidateApiResponse(operation = "Login User")
     ApiResponse<LoginResponse> login(
@@ -37,8 +45,22 @@ public interface AgencyClient {
     @PostMapping(value = "${application.brand.integrations.api-gw.path.update}", consumes = "application/json")
     @ValidateApiResponse(operation = "Update User")
     ApiResponse<UpdateResponse> updateUser(
-            @RequestBody UpdateRequest request,
-            @RequestHeader("X-Token") String token
+            @RequestHeader("X-Token") String token,
+            @RequestBody UpdateRequest request
     );
 
+    @PostMapping(value = "${application.brand.integrations.api-gw.path.update-bot}", consumes = "application/json")
+    @ValidateApiResponse(operation = "Update User")
+    ApiResponse<?> updateBot(
+            @RequestHeader("X-Token") String token,
+            @RequestBody UpdateRequest request
+    );
+
+
+    @PostMapping(value = "${application.brand.integrations.api-gw.path.deposit}", consumes = "application/json")
+    @ValidateApiResponse(operation = "Deposit Balance")
+    ApiResponse<?> adminDeposit(
+            @RequestHeader("X-Token") String token,
+            @RequestBody AdminDepositRequest request
+    );
 }

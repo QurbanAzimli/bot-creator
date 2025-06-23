@@ -7,4 +7,5 @@ import lombok.Data;
 public class UpdateRequest {
     @JsonProperty("fullname")
     private String fullName;
+    private String username;
 }

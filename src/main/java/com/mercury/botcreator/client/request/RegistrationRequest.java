@@ -17,6 +17,7 @@ public class RegistrationRequest {
     private String device;
     private String browser;
     private String fg;
+    private String ip;
 
 
 
@@ -28,6 +29,7 @@ public class RegistrationRequest {
         template.setDevice("Computer");
         template.setBrowser("chrome");
         template.setFg("1d2ffbef3226929d0b1f63373fdc74c8");
+        template.setIp("129.34.254.27");
         return template;
     }
 }
