@@ -1,14 +1,17 @@
 
 application:
+  viptalk:
+#    room-id: "!unRbuLqZDKHPnVEtex:matrix-uat.viptalk.org"
+    room-id: "!vFmUBcZRwuyaOApayU:matrix-uat.viptalk.org"
   common:
-    depositAmount: 50000000
+    depositAmount: 5000000000000
   brand:
     agencyId: 38
-    appId: "bc116111"
+    appId: "bc116222"
     token: "58bc2820612d23c34fe43d0b2c6f7223"
     integrations:
       api-gw:
-        host: "https://apigw-111.sgame.us"
+        host: "https://gatquaiznaliz.thaizlapesgw.com"
         path:
           register: "/user/register.aspx"
           register-bot: "/gwms/v1/bot/register.aspx"
@@ -21,3 +24,7 @@ application:
         path:
           topUp: "/gamems/v1/agency/transfer"
           verifyToken: "/gamems/v1/agency/verifytoken/{token}"
+    botConfigPath: "bots/bots-222-prod.yml"
+    scheduler:
+      balanceCheck: "0 0 0,12 * * *"  # Every day at 00:00 and 12:00
+    fileSendDelaySeconds: 10

@@ -1,14 +1,17 @@
-version: '3.8'
-
 services:
   botcreator:
-    image: "bot-creator-app:latest"
-    container_name: "bot-creator"
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: "azimovgrbn/bot-creator:latest"
+    container_name: "bot-creator-${BRAND}"
     ports:
-      - "8080:8080"
+      - "${PORT}:8080"
     environment:
-        SPRING_PROFILES_ACTIVE: 111
+      SPRING_PROFILES_ACTIVE: ${PROFILE}
+      SPRING_CONFIG_ADDITIONAL_LOCATION: /config/
+      APPLICATION_BRAND_BOTCONFIGPATH: /config/bot-confs/${BOT_CONFIG}
+      APPLICATION_BRAND_REPORTDIR: /app/balance-reports
+      APPLICATION_BRAND_LOGDIR: /app/logs
+    volumes:
+      - ./conf:/config:ro
+      - ./balance-reports:/app/balance-reports
+      - ./logs:/app/logs
     restart: "unless-stopped"

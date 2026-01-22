@@ -1,0 +1,13 @@
+application:
+  viptalk:
+    host: "https://api.viptalk.org"
+    token: "QGJvdF9ramJ0MHUzOWFw_EV5Pw9qMUjPJ3InHfOoFY1rPggeEjWtih5q"
+    path:
+      send-message: "/v1/bot/{token}/sendMessage"
+      send-file: "/v1/bot/{token}/sendFile"
+  brand:
+    reportDir: "resources/bots/balance-reports"
+    logDir: "logs"
+    fileSendDelaySeconds: 30
+    requestDelayMs: 200
+    maxConcurrentRequests: 8

@@ -34,3 +34,10 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Bot config files (sensitive) ###
+src/main/resources/bots/
+
+### Generated reports and logs ###
+/resources/
+/logs/
