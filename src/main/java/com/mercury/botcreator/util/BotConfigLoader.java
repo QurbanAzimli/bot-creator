@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 
@@ -18,6 +19,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "application.brand.botConfigPath")
 public class BotConfigLoader {
 
     @Value("${application.brand.botConfigPath}")

@@ -27,6 +27,13 @@ public class BotCreationController {
         return "Bot created successfully!";
     }
 
+    @PostMapping("/register")
+    public String registerBots(@RequestBody BotCreateRequest request) {
+        log.info("Registering bots...");
+        naturalBotCreationService.registerBots(request);
+        return "Bots registered successfully!";
+    }
+
     @PostMapping("/admin")
     public String createBotAdmin(@RequestBody BotCreateRequest request) {
         log.info("Creating a new bot...");

@@ -4,11 +4,11 @@ application:
     depositAmount: 5000000
   brand:
     agencyId: 38
-    appId: "go88com"
+    appId: "bc114103"
     token: "58bc2820612d23c34fe43d0b2c6f7223"
     integrations:
       api-gw:
-        host: "https://gw-staging.stgame.win"
+        host: "https://apigw-loadtest.sgame.us"
         path:
           register: "/user/register.aspx"
           register-bot: "/gwms/v1/bot/register.aspx"

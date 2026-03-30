@@ -8,15 +8,21 @@ import com.mercury.botcreator.client.request.UpdateRequest;
 import com.mercury.botcreator.client.response.ApiResponse;
 import com.mercury.botcreator.client.response.RegistrationResponse;
 import com.mercury.botcreator.model.BotCreateRequest;
+import com.mercury.botcreator.model.BotCreationRecord;
+import com.mercury.botcreator.util.BotCreationReportWriter;
 import com.mercury.botcreator.util.UsernameGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import static com.mercury.botcreator.util.Randomizer.randomString;
 
 @Slf4j
 @Service
@@ -39,13 +45,14 @@ public class AdminSupportedBotCreationService {
         int endIndex = request.getEndIndex();
         int batchSize = 50;
 
+        List<BotCreationRecord> records = new CopyOnWriteArrayList<>();
         ExecutorService executor = Executors.newFixedThreadPool(10);
 
         for (int i = startIndex; i < endIndex; i += batchSize) {
             int from = i;
             int to = Math.min(i + batchSize, endIndex);
 
-            executor.submit(() -> createBots(from, to, request));
+            executor.submit(() -> processBatch(from, to, request, records));
         }
 
         executor.shutdown();
@@ -55,55 +62,68 @@ public class AdminSupportedBotCreationService {
             Thread.currentThread().interrupt();
             log.error("Bot creation interrupted", e);
         }
-        long endTime = System.currentTimeMillis();
 
-        log.info("Total process took: {} ms", endTime - startTime);
+        log.info("Total process took: {} ms", System.currentTimeMillis() - startTime);
+        BotCreationReportWriter.writeReport("admin", records);
     }
 
-
-    public void createBots(int startIndex, int endIndex, BotCreateRequest request) {
+    private void processBatch(int startIndex, int endIndex, BotCreateRequest request, List<BotCreationRecord> records) {
         String botNamePrefix = request.getBotNamePrefix();
         String botPassword = request.getBotPassword();
 
-        RegistrationRequest registrationTemplate = RegistrationRequest.createTemplate(appId);
+        RegistrationRequest registrationTemplate = RegistrationRequest.createTemplate(appId, randomString(33));
         UpdateRequest updateTemplate = new UpdateRequest();
         AdminDepositRequest adminDepositRequest = new AdminDepositRequest(amount);
 
         for (int i = startIndex; i < endIndex; i++) {
             String username = botNamePrefix + i;
-            try {
-                registerBots(registrationTemplate, username, botPassword);
-                update(updateTemplate, username);
-                adminDeposit(adminDepositRequest, username);
-            } catch (Exception e) {
-                log.error("Could not finish for process for: {}: Error: {}", username, e.getMessage());
+            BotCreationRecord record = new BotCreationRecord(username);
+
+            record.setRegistered(tryRegister(registrationTemplate, username, botPassword));
+            if (record.isRegistered()) {
+                record.setDisplayNameUpdated(tryUpdateDisplayName(updateTemplate, username));
+                record.setDeposited(tryDeposit(adminDepositRequest, username));
             }
 
+            records.add(record);
         }
     }
 
-    private void registerBots(RegistrationRequest registrationTemplate, String username, String botPassword) {
-        registrationTemplate.setUsername(username);
-        registrationTemplate.setPassword(botPassword);
-
-        ApiResponse<RegistrationResponse> response = agencyClient.registerBot(token, registrationTemplate);
-
-        log.info("Registration Response received: {}", response);
+    private boolean tryRegister(RegistrationRequest template, String username, String password) {
+        try {
+            template.setUsername(username);
+            template.setPassword(password);
+            ApiResponse<RegistrationResponse> response = agencyClient.registerBot(token, template);
+            log.info("Registration response for {}: {}", username, response);
+            return true;
+        } catch (Exception e) {
+            log.error("Could not register bot {}: {}", username, e.getMessage());
+            return false;
+        }
     }
 
-    private void update(UpdateRequest updateTemplate, String username) {
-        updateTemplate.setFullName(UsernameGenerator.generate("bot", 12));
-        updateTemplate.setUsername(username);
-        ApiResponse<?> response = agencyClient.updateBot(token, updateTemplate);
-        log.info("Update Response received: {}", response);
+    private boolean tryUpdateDisplayName(UpdateRequest template, String username) {
+        try {
+            template.setFullName(UsernameGenerator.generate("bot", 12));
+            template.setUsername(username);
+            agencyClient.updateBot(token, template);
+            log.info("Display name updated for {}", username);
+            return true;
+        } catch (Exception e) {
+            log.error("Could not update display name for {}: {}", username, e.getMessage());
+            return false;
+        }
     }
 
-    public void adminDeposit(AdminDepositRequest adminDepositRequest, String username) {
-        adminDepositRequest.setUsername(username);
-
-        ApiResponse<?> response = agencyClient.adminDeposit(token, adminDepositRequest);
-
-        log.info("Transfer response received: {}", response);
+    private boolean tryDeposit(AdminDepositRequest template, String username) {
+        try {
+            template.setUsername(username);
+            agencyClient.adminDeposit(token, template);
+            log.info("Deposit completed for {}", username);
+            return true;
+        } catch (Exception e) {
+            log.error("Could not deposit for {}: {}", username, e.getMessage());
+            return false;
+        }
     }
-
 }

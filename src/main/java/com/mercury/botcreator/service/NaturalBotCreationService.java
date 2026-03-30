@@ -13,6 +13,8 @@ import com.mercury.botcreator.client.response.RegistrationResponse;
 import com.mercury.botcreator.client.response.TransferResponse;
 import com.mercury.botcreator.client.response.VerifyTokenResponse;
 import com.mercury.botcreator.model.BotCreateRequest;
+import com.mercury.botcreator.model.BotCreationRecord;
+import com.mercury.botcreator.util.BotCreationReportWriter;
 import com.mercury.botcreator.util.UsernameGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,9 +23,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import static com.mercury.botcreator.util.Randomizer.randomString;
 
 @Slf4j
 @Service
@@ -48,98 +53,130 @@ public class NaturalBotCreationService {
         int endIndex = request.getEndIndex();
         int batchSize = 50;
 
+        List<BotCreationRecord> records = new CopyOnWriteArrayList<>();
         ExecutorService executor = Executors.newFixedThreadPool(4);
 
         for (int i = startIndex; i < endIndex; i += batchSize) {
             int from = i;
             int to = Math.min(i + batchSize, endIndex);
 
-            executor.submit(() -> createBots(from, to, request));
+            executor.submit(() -> processBatch(from, to, request, records));
         }
 
         executor.shutdown();
         try {
-            executor.awaitTermination(30, TimeUnit.MINUTES); // adjust timeout as needed
+            executor.awaitTermination(30, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.error("Bot creation interrupted", e);
         }
-        long endTime = System.currentTimeMillis();
 
-        log.info("Total process took: {} ms", endTime - startTime);
+        log.info("Total process took: {} ms", System.currentTimeMillis() - startTime);
+        BotCreationReportWriter.writeReport("natural", records);
     }
 
-
-    public void createBots(int startIndex, int endIndex, BotCreateRequest request) {
+    private void processBatch(int startIndex, int endIndex, BotCreateRequest request, List<BotCreationRecord> records) {
         String botNamePrefix = request.getBotNamePrefix();
         String botPassword = request.getBotPassword();
 
-        RegistrationRequest registrationTemplate = RegistrationRequest.createTemplate(appId);
+        RegistrationRequest registrationTemplate = RegistrationRequest.createTemplate(appId, randomString(33));
         LoginRequest loginTemplate = LoginRequest.createTemplate(appId);
         UpdateRequest updateTemplate = new UpdateRequest();
         TransferRequest transferRequest = TransferRequest.createTemplate();
 
         for (int i = startIndex; i < endIndex; i++) {
             String username = botNamePrefix + i;
-            try {
-                registerBots(registrationTemplate, username, botPassword);
-                LoginResponse loginResponse = login(loginTemplate, username, botPassword);
-                update(updateTemplate, loginResponse.getSessionId());
-                VerifyTokenResponse verifyTokenResponse = verifyToken(loginResponse.getToken());
-                topUpBalance(transferRequest, verifyTokenResponse);
-            } catch (Exception e) {
-                log.error("Could not finish for process for: {}: Error: {}", username, e.getMessage());
+            BotCreationRecord record = new BotCreationRecord(username);
+
+            record.setRegistered(tryRegister(registrationTemplate, username, botPassword));
+            if (!record.isRegistered()) {
+                records.add(record);
+                continue;
             }
 
+            LoginResponse loginResponse = tryLogin(loginTemplate, username, botPassword);
+            if (loginResponse == null) {
+                records.add(record);
+                continue;
+            }
+
+            record.setDisplayNameUpdated(tryUpdateDisplayName(updateTemplate, loginResponse.getSessionId()));
+            record.setDeposited(tryDeposit(transferRequest, loginResponse.getToken()));
+
+            records.add(record);
         }
     }
 
-    private void registerBots(RegistrationRequest registrationTemplate, String username, String botPassword) {
-        registrationTemplate.setUsername(username);
-        registrationTemplate.setPassword(botPassword);
+    public void registerBots(BotCreateRequest request) {
+        int startIndex = request.getStartIndex();
+        int endIndex = request.getEndIndex();
+        String botNamePrefix = request.getBotNamePrefix();
+        String botPassword = request.getBotPassword();
 
-        ApiResponse<RegistrationResponse> response = agencyClient.registerUser(registrationTemplate);
+        RegistrationRequest registrationTemplate = RegistrationRequest.createTemplate(appId, randomString(33));
 
-        log.info("Registration Response received: {}", response);
+        for (int i = startIndex; i < endIndex; i++) {
+            String username = botNamePrefix + i;
+            tryRegister(registrationTemplate, username, botPassword);
+        }
     }
 
-    private LoginResponse login(LoginRequest loginTemplate, String username, String password) {
-        loginTemplate.setUsername(username);
-        loginTemplate.setPassword(password);
-
-        ApiResponse<LoginResponse> response = agencyClient.login(loginTemplate);
-
-        log.info("Login Response received: {}", response);
-
-        return response.getData().get(0);
+    private boolean tryRegister(RegistrationRequest template, String username, String password) {
+        try {
+            template.setUsername(username);
+            template.setPassword(password);
+            ApiResponse<RegistrationResponse> response = agencyClient.registerUser(template);
+            log.info("Registration response for {}: {}", username, response);
+            return true;
+        } catch (Exception e) {
+            log.error("Could not register bot {}: {}", username, e.getMessage());
+            return false;
+        }
     }
 
-    private void update(UpdateRequest updateTemplate, String token) {
-        updateTemplate.setFullName(UsernameGenerator.generate("bot", 10));
-        agencyClient.updateUser(token, updateTemplate);
-        log.info("Avatar updated");
+    private LoginResponse tryLogin(LoginRequest template, String username, String password) {
+        try {
+            template.setUsername(username);
+            template.setPassword(password);
+            ApiResponse<LoginResponse> response = agencyClient.login(template);
+            log.info("Login response for {}: {}", username, response);
+            return response.getData().get(0);
+        } catch (Exception e) {
+            log.error("Could not login bot {}: {}", username, e.getMessage());
+            return null;
+        }
     }
 
-    private VerifyTokenResponse verifyToken(String token) {
-        ApiResponse<VerifyTokenResponse> verifyTokenResponse = transferClient.verifyToken(token);
-        log.info("Verify token response received: {}", verifyTokenResponse);
-        return verifyTokenResponse.getData().get(0);
+    private boolean tryUpdateDisplayName(UpdateRequest template, String sessionToken) {
+        try {
+            template.setFullName(UsernameGenerator.generate("bot", 10));
+            agencyClient.updateUser(sessionToken, template);
+            log.info("Display name updated");
+            return true;
+        } catch (Exception e) {
+            log.error("Could not update display name: {}", e.getMessage());
+            return false;
+        }
     }
 
+    private boolean tryDeposit(TransferRequest template, String loginToken) {
+        try {
+            ApiResponse<VerifyTokenResponse> verifyResponse = transferClient.verifyToken(loginToken);
+            VerifyTokenResponse verified = verifyResponse.getData().get(0);
 
-    public TransferResponse topUpBalance(TransferRequest transferTemplate, VerifyTokenResponse verifyTokenResponse) {
-        transferTemplate.setToken(verifyTokenResponse.getToken());
-        transferTemplate.setUid(verifyTokenResponse.getUuid());
-        transferTemplate.setAgencyId(agencyId);
-        transferTemplate.setMemberId(verifyTokenResponse.getMemberId());
-        transferTemplate.setAmount(amount);
-        transferTemplate.setTransactionId(UUID.randomUUID().toString());
+            template.setToken(verified.getToken());
+            template.setUid(verified.getUuid());
+            template.setAgencyId(agencyId);
+            template.setMemberId(verified.getMemberId());
+            template.setAmount(amount);
+            template.setTransactionId(UUID.randomUUID().toString());
 
-        ApiResponse<TransferResponse> transferResponse = transferClient.topUpBalance(List.of(transferTemplate));
-
-        log.info("Transfer response received: {}", transferResponse);
-        return transferResponse.getData().get(0);
+            ApiResponse<TransferResponse> transferResponse = transferClient.topUpBalance(List.of(template));
+            log.info("Deposit completed: {}", transferResponse);
+            return true;
+        } catch (Exception e) {
+            log.error("Could not deposit: {}", e.getMessage());
+            return false;
+        }
     }
-
-
 }
