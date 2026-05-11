@@ -24,7 +24,7 @@ public class AgencyClientConfig {
     @Bean
     public RequestInterceptor requestLoggingInterceptor() {
         return template -> {
-            log.info("[Feign Request] {} {}", template.method(), template.url());
+            log.info("[Feign Request] {} {}{}", template.method(), template.feignTarget().url(), template.url());
             if (template.body() != null) {
                 log.info("[Feign Request Body] {}", new String(template.body(), StandardCharsets.UTF_8));
             }
